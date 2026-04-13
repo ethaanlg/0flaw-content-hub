@@ -1,6 +1,7 @@
 'use client'
 
 import React from 'react'
+import * as Sentry from '@sentry/nextjs'
 
 type Props = { children: React.ReactNode }
 type State = { hasError: boolean; message: string }
@@ -17,6 +18,7 @@ export class GlobalErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('[GlobalErrorBoundary]', error, info.componentStack)
+    Sentry.captureException(error, { extra: { componentStack: info.componentStack } })
   }
 
   render() {
