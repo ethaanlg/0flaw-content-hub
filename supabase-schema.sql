@@ -65,3 +65,64 @@ create policy "Allow all" on post_stats for all using (true);
 -- Index
 create index if not exists posts_status_scheduled on posts (status, scheduled_at);
 create index if not exists post_stats_post_platform on post_stats (post_id, platform);
+
+-- ============================================================
+-- Migration 2026-04-13 : Auth multi-tenant + user_settings
+-- À exécuter dans l'éditeur SQL du dashboard Supabase
+-- ============================================================
+
+-- 1. Ajouter user_id aux tables existantes
+alter table posts add column if not exists user_id uuid references auth.users(id) on delete cascade;
+alter table post_stats add column if not exists user_id uuid references auth.users(id) on delete cascade;
+
+-- 2. Supprimer les anciennes policies permissives
+drop policy if exists "Allow all" on posts;
+drop policy if exists "Allow all" on post_stats;
+
+-- 3. RLS stricte sur posts : l'utilisateur ne voit que ses posts
+create policy "Users see own posts" on posts
+  for select using (auth.uid() = user_id);
+
+create policy "Users insert own posts" on posts
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users update own posts" on posts
+  for update using (auth.uid() = user_id);
+
+create policy "Users delete own posts" on posts
+  for delete using (auth.uid() = user_id);
+
+-- 4. RLS stricte sur post_stats
+create policy "Users see own stats" on post_stats
+  for select using (auth.uid() = user_id);
+
+create policy "Users insert own stats" on post_stats
+  for insert with check (auth.uid() = user_id);
+
+-- 5. Index sur user_id pour les perfs
+create index if not exists posts_user_id on posts (user_id);
+create index if not exists post_stats_user_id on post_stats (user_id);
+
+-- 6. Table user_settings (pour Task 5)
+create table if not exists user_settings (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  week_goal int not null default 2,
+  optimal_days int[] not null default '{2,4}',
+  optimal_hour int not null default 8,
+  default_platforms text[] not null default '{"linkedin","instagram"}',
+  ai_model text not null default 'claude-sonnet-4-6',
+  linkedin_connected boolean not null default false,
+  instagram_connected boolean not null default false,
+  updated_at timestamptz default now()
+);
+
+alter table user_settings enable row level security;
+
+create policy "Users see own settings" on user_settings
+  for select using (auth.uid() = user_id);
+
+create policy "Users upsert own settings" on user_settings
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users update own settings" on user_settings
+  for update using (auth.uid() = user_id);
