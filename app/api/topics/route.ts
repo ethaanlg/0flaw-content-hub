@@ -27,7 +27,10 @@ function createSupabase() {
     {
       cookies: {
         getAll: () => cookieStore.getAll(),
-        setAll: () => {},
+        setAll: (newCookies) =>
+          newCookies.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          ),
       },
     }
   )
@@ -50,6 +53,7 @@ export async function GET() {
     return NextResponse.json({ curated: CURATED_TOPICS, user: data ?? [] })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Erreur inconnue'
+    console.error('[/api/topics GET] Error:', message)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
@@ -80,6 +84,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(data, { status: 201 })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Erreur inconnue'
+    console.error('[/api/topics POST] Error:', message)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
@@ -88,23 +93,31 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const id = req.nextUrl.searchParams.get('id')
-    if (!id) return NextResponse.json({ error: 'id requis' }, { status: 400 })
+    const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!id || !UUID_RE.test(id)) {
+      return NextResponse.json({ error: 'id invalide' }, { status: 400 })
+    }
 
     const supabase = createSupabase()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('user_topics')
       .delete()
       .eq('id', id)
-      .eq('user_id', user.id)  // RLS double-check
+      .eq('user_id', user.id)
+      .select('id')
 
     if (error) throw error
+    if (!data || data.length === 0) {
+      return NextResponse.json({ error: 'Topic introuvable' }, { status: 404 })
+    }
 
     return new NextResponse(null, { status: 204 })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Erreur inconnue'
+    console.error('[/api/topics DELETE] Error:', message)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
