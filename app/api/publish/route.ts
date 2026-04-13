@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { publishLinkedInPost } from '@/lib/linkedin'
 import { publishInstagramCarousel } from '@/lib/instagram'
+import { PublishBodySchema, parseBody } from '@/lib/zod-schemas'
 
 export async function POST(req: NextRequest) {
   try {
-    const { postId } = await req.json()
-    if (!postId) return NextResponse.json({ error: 'postId requis' }, { status: 400 })
+    const parsed = parseBody(PublishBodySchema, await req.json())
+    if (!parsed.success) return parsed.response
 
-    // Récupérer le post
+    const { postId } = parsed.data
+
     const { data: post, error } = await supabaseAdmin
       .from('posts')
       .select('*')
@@ -21,7 +23,6 @@ export async function POST(req: NextRequest) {
     const results: Record<string, string> = {}
     const errors: string[] = []
 
-    // Publier sur LinkedIn
     if (post.platforms.includes('linkedin') && post.pdf_url) {
       try {
         const liPostId = await publishLinkedInPost(
@@ -30,12 +31,11 @@ export async function POST(req: NextRequest) {
           post.title
         )
         results.linkedin_post_id = liPostId
-      } catch (e: any) {
-        errors.push(`LinkedIn: ${e.message}`)
+      } catch (e: unknown) {
+        errors.push(`LinkedIn: ${e instanceof Error ? e.message : String(e)}`)
       }
     }
 
-    // Publier sur Instagram
     if (post.platforms.includes('instagram') && post.slides_urls?.length) {
       try {
         const igPostId = await publishInstagramCarousel(
@@ -43,12 +43,11 @@ export async function POST(req: NextRequest) {
           post.slides_urls
         )
         results.instagram_post_id = igPostId
-      } catch (e: any) {
-        errors.push(`Instagram: ${e.message}`)
+      } catch (e: unknown) {
+        errors.push(`Instagram: ${e instanceof Error ? e.message : String(e)}`)
       }
     }
 
-    // Mettre à jour le statut en base
     const hasSuccess = Object.keys(results).length > 0
     await supabaseAdmin.from('posts').update({
       ...results,
@@ -57,7 +56,8 @@ export async function POST(req: NextRequest) {
     }).eq('id', postId)
 
     return NextResponse.json({ success: hasSuccess, results, errors })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Erreur inconnue'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

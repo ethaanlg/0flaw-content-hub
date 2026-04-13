@@ -2,10 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getLinkedInPostStats } from '@/lib/linkedin'
 import { getInstagramPostStats } from '@/lib/instagram'
+import { StatsBodySchema, parseBody } from '@/lib/zod-schemas'
 
 export async function POST(req: NextRequest) {
   try {
-    const { postId } = await req.json()
+    const parsed = parseBody(StatsBodySchema, await req.json())
+    if (!parsed.success) return parsed.response
+
+    const { postId } = parsed.data
 
     const { data: post } = await supabaseAdmin
       .from('posts')

@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generatePostDescription } from '@/lib/claude'
 import { generateCarouselSlides } from '@/lib/slides-gen'
+import { GenerateBodySchema, parseBody } from '@/lib/zod-schemas'
 
 export async function POST(req: NextRequest) {
   try {
-    const { topic, title } = await req.json()
-    if (!topic || topic.trim().length < 3) {
-      return NextResponse.json({ error: 'Sujet trop court (min 3 caractères)' }, { status: 400 })
-    }
+    const parsed = parseBody(GenerateBodySchema, await req.json())
+    if (!parsed.success) return parsed.response
 
+    const { topic, title } = parsed.data
     const effectiveTitle = (title ?? topic).trim()
 
-    // Generate descriptions and slides in parallel
     const [v1, v2, v3, slides] = await Promise.all([
       generatePostDescription(topic.trim(), 'v1'),
       generatePostDescription(topic.trim(), 'v2'),

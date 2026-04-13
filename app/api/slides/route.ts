@@ -4,22 +4,21 @@ import React from 'react'
 import { renderToBuffer } from '@react-pdf/renderer'
 import { CarouselDocument } from '@/lib/pdf-render'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { SlidesBodySchema, parseBody } from '@/lib/zod-schemas'
 import type { Slide } from '@/lib/slides-gen'
 
 export async function POST(req: NextRequest) {
   try {
-    const { slides } = (await req.json()) as { slides: Slide[] }
+    const parsed = parseBody(SlidesBodySchema, await req.json())
+    if (!parsed.success) return parsed.response
 
-    if (!slides?.length) {
-      return NextResponse.json({ error: 'slides requis' }, { status: 400 })
-    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const slides = parsed.data.slides as any as Slide[]
 
-    // Render PDF
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const element = React.createElement(CarouselDocument, { slides }) as any
     const buffer = await renderToBuffer(element)
 
-    // Upload to Supabase Storage
     const fileName = `${Date.now()}-carousel.pdf`
     const { error: uploadError } = await supabaseAdmin.storage
       .from('carousels')
