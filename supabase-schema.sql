@@ -126,3 +126,29 @@ create policy "Users upsert own settings" on user_settings
 
 create policy "Users update own settings" on user_settings
   for update using (auth.uid() = user_id);
+
+-- ─────────────────────────────────────────────────────────────
+-- Migration: topic library + text post support
+-- ─────────────────────────────────────────────────────────────
+
+-- Extend posts table
+alter table posts add column if not exists content_type text not null default 'carousel';
+alter table posts add column if not exists linkedin_text text;
+alter table posts add column if not exists instagram_text text;
+
+-- User topics
+create table if not exists user_topics (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  title text not null,
+  description text,
+  category text not null default 'custom',
+  created_at timestamptz not null default now()
+);
+
+alter table user_topics enable row level security;
+
+drop policy if exists "user_topics_rls" on user_topics;
+create policy "user_topics_rls" on user_topics
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
