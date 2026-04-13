@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
-import { supabase, type Post } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
+import type { Post } from '@/lib/types'
 import PlatformBadge from '@/components/PlatformBadge'
 import EmptyState from '@/components/EmptyState'
 import { format } from 'date-fns'

@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { supabase, type Post, type PostStats } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
+import type { Post, PostStats } from '@/lib/types'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from 'recharts'
 import { format, subDays } from 'date-fns'
 import { fr } from 'date-fns/locale'

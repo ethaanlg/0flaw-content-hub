@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { supabase, type Post } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
+import type { Post } from '@/lib/types'
 import PlatformBadge from '@/components/PlatformBadge'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import {
