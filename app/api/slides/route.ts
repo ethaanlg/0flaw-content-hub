@@ -12,7 +12,6 @@ export async function POST(req: NextRequest) {
     const parsed = parseBody(SlidesBodySchema, await req.json())
     if (!parsed.success) return parsed.response
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const slides = parsed.data.slides as any as Slide[]
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -11,13 +11,13 @@ export const PublishBodySchema = z.object({
 })
 
 export const SlidesBodySchema = z.object({
-  slides: z.array(z.any()).min(1, 'Au moins un slide requis'),
+  slides: z.array(z.unknown()).min(1, 'Au moins un slide requis'),
 })
 
 export const PostsUpdateBodySchema = z.object({
   id: z.string().uuid('id doit être un UUID valide'),
   status: z.enum(['draft', 'scheduled', 'published', 'failed']).optional(),
-  scheduledAt: z.string().datetime({ offset: true }).nullable().optional(),
+  scheduledAt: z.coerce.date().nullable().optional(),
 })
 
 export const StatsBodySchema = z.object({
@@ -25,7 +25,7 @@ export const StatsBodySchema = z.object({
 })
 
 export function parseBody<T>(
-  schema: z.ZodSchema<T>,
+  schema: z.ZodType<T>,
   data: unknown
 ): { success: true; data: T } | { success: false; response: NextResponse } {
   const result = schema.safeParse(data)

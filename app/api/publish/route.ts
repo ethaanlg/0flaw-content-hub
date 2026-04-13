@@ -49,11 +49,16 @@ export async function POST(req: NextRequest) {
     }
 
     const hasSuccess = Object.keys(results).length > 0
-    await supabaseAdmin.from('posts').update({
+    const { error: updateError } = await supabaseAdmin.from('posts').update({
       ...results,
       status: hasSuccess ? 'published' : 'failed',
       published_at: hasSuccess ? new Date().toISOString() : null
     }).eq('id', postId)
+
+    if (updateError) {
+      console.error('[/api/publish] Failed to update post status:', updateError.message)
+      return NextResponse.json({ error: 'Publication réussie mais mise à jour du statut échouée' }, { status: 500 })
+    }
 
     return NextResponse.json({ success: hasSuccess, results, errors })
   } catch (err: unknown) {
