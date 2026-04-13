@@ -34,7 +34,7 @@ export const GenerateTextPostSchema = z.object({
 export const TopicCreateSchema = z.object({
   title: z.string().min(2, 'Titre trop court').max(100),
   description: z.string().max(300).optional(),
-  category: z.string().max(50).optional(),
+  category: z.string().max(50).default('custom'),
 })
 
 export function parseBody<T>(

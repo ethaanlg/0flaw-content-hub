@@ -1,3 +1,5 @@
+export type ContentType = 'carousel' | 'text'
+
 export type Post = {
   id: string
   title: string
@@ -42,8 +44,6 @@ export type Settings = {
   linkedinConnected: boolean
   instagramConnected: boolean
 }
-
-export type ContentType = 'carousel' | 'text'
 
 export type CuratedTopic = {
   id: string             // stable slug, e.g. "phishing-pme"
