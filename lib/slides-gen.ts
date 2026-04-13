@@ -1,5 +1,6 @@
 // GPT-4o carousel generation — structure based on 0Flaw reference carousel
 // Each slide maps 1:1 to a visual template in the renderer
+import { cachedOr } from './kv-cache'
 
 export type SlideTag = {
   icon?: string            // ex: "△", "€", "→", "○", emoji
@@ -126,7 +127,10 @@ export async function generateCarouselSlides(
   title: string,
   topic: string
 ): Promise<Slide[]> {
-  const userPrompt = `Carrousel LinkedIn 7 slides sur :
+  const cacheKey = `slides:${topic.toLowerCase().trim().replace(/\s+/g, '-').slice(0, 80)}`
+
+  return cachedOr(cacheKey, async () => {
+    const userPrompt = `Carrousel LinkedIn 7 slides sur :
 Titre : "${title}"
 Angle/contexte : "${topic}"
 
@@ -145,46 +149,47 @@ Format attendu :
   ]
 }`
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.OPENAI_API_KEY!}`,
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o',
-      max_tokens: 3000,
-      temperature: 0.72,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user',   content: userPrompt },
-      ],
-    }),
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY!}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        max_tokens: 3000,
+        temperature: 0.72,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user',   content: userPrompt },
+        ],
+      }),
+    })
+
+    const data = await res.json()
+
+    if (!res.ok) {
+      const msg = data?.error?.message ?? `HTTP ${res.status}`
+      throw new Error(`OpenAI API error (carousel): ${msg}`)
+    }
+
+    const raw: string = data.choices?.[0]?.message?.content ?? ''
+
+    let parsed: { slides: Slide[] }
+    try {
+      parsed = JSON.parse(raw)
+    } catch {
+      // Fallback: extract first JSON block if model added text around it
+      const match = raw.match(/\{[\s\S]*\}/)
+      if (!match) throw new Error(`Réponse GPT-4o non-JSON — reçu : ${raw.slice(0, 200)}`)
+      parsed = JSON.parse(match[0])
+    }
+
+    if (!Array.isArray(parsed.slides) || parsed.slides.length !== 7) {
+      throw new Error(`GPT-4o a retourné ${parsed.slides?.length ?? 0} slides (attendu : 7)`)
+    }
+
+    return parsed.slides
   })
-
-  const data = await res.json()
-
-  if (!res.ok) {
-    const msg = data?.error?.message ?? `HTTP ${res.status}`
-    throw new Error(`OpenAI API error (carousel): ${msg}`)
-  }
-
-  const raw: string = data.choices?.[0]?.message?.content ?? ''
-
-  let parsed: { slides: Slide[] }
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    // Fallback: extract first JSON block if model added text around it
-    const match = raw.match(/\{[\s\S]*\}/)
-    if (!match) throw new Error(`Réponse GPT-4o non-JSON — reçu : ${raw.slice(0, 200)}`)
-    parsed = JSON.parse(match[0])
-  }
-
-  if (!Array.isArray(parsed.slides) || parsed.slides.length !== 7) {
-    throw new Error(`GPT-4o a retourné ${parsed.slides?.length ?? 0} slides (attendu : 7)`)
-  }
-
-  return parsed.slides
 }
