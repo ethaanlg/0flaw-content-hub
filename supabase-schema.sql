@@ -132,7 +132,8 @@ create policy "Users update own settings" on user_settings
 -- ─────────────────────────────────────────────────────────────
 
 -- Extend posts table
-alter table posts add column if not exists content_type text not null default 'carousel';
+alter table posts add column if not exists content_type text not null default 'carousel'
+  check (content_type in ('carousel', 'text'));
 alter table posts add column if not exists linkedin_text text;
 alter table posts add column if not exists instagram_text text;
 
@@ -152,3 +153,5 @@ drop policy if exists "user_topics_rls" on user_topics;
 create policy "user_topics_rls" on user_topics
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+create index if not exists user_topics_user_id_idx on user_topics (user_id);
