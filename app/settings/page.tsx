@@ -1,18 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type Settings = {
-  weekGoal: number
-  optimalDays: number[]   // 0=Sun…6=Sat
-  optimalHour: number
-  defaultPlatforms: string[]
-  aiModel: string
-  linkedinConnected: boolean
-  instagramConnected: boolean
-}
+import type { Settings } from '@/lib/types'
 
 const DEFAULT: Settings = {
   weekGoal: 2,
