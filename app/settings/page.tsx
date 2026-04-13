@@ -232,7 +232,7 @@ export default function SettingsPage() {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    await supabase.from('user_settings').upsert({
+    const { error } = await supabase.from('user_settings').upsert({
       user_id: user.id,
       week_goal: settings.weekGoal,
       optimal_days: settings.optimalDays,
@@ -243,6 +243,11 @@ export default function SettingsPage() {
       instagram_connected: settings.instagramConnected,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'user_id' })
+
+    if (error) {
+      console.error('[Settings] Erreur sauvegarde:', error.message)
+      return
+    }
 
     setSaved(true)
     setToast(true)
