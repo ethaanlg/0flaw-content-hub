@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import Sidebar from '@/components/Sidebar'
+import { GlobalErrorBoundary } from '@/components/GlobalErrorBoundary'
 
 export const metadata: Metadata = {
   title: '0Flaw Content Hub',
@@ -27,7 +28,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           transition: 'margin-left 0.25s ease',
           minWidth: 0,
         }}>
-          {children}
+          <GlobalErrorBoundary>
+            {children}
+          </GlobalErrorBoundary>
         </main>
       </body>
     </html>
