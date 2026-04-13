@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 import type { Settings } from '@/lib/types'
 
 const DEFAULT: Settings = {
@@ -12,8 +13,6 @@ const DEFAULT: Settings = {
   linkedinConnected: false,
   instagramConnected: false,
 }
-
-const STORAGE_KEY = '0flaw_settings'
 
 const DAY_LABELS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
 
@@ -177,12 +176,37 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>(DEFAULT)
   const [toast, setToast] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(true)
 
+  // Charger depuis Supabase au mount
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) setSettings({ ...DEFAULT, ...JSON.parse(stored) })
-    } catch {}
+    async function load() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setLoading(false)
+        return
+      }
+
+      const { data } = await supabase
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+
+      if (data) {
+        setSettings({
+          weekGoal: data.week_goal,
+          optimalDays: data.optimal_days,
+          optimalHour: data.optimal_hour,
+          defaultPlatforms: data.default_platforms,
+          aiModel: data.ai_model,
+          linkedinConnected: data.linkedin_connected,
+          instagramConnected: data.instagram_connected,
+        })
+      }
+      setLoading(false)
+    }
+    load()
   }, [])
 
   function update<K extends keyof Settings>(key: K, value: Settings[K]) {
@@ -204,12 +228,42 @@ export default function SettingsPage() {
     update('defaultPlatforms', plats)
   }
 
-  function save() {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
+  async function save() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    await supabase.from('user_settings').upsert({
+      user_id: user.id,
+      week_goal: settings.weekGoal,
+      optimal_days: settings.optimalDays,
+      optimal_hour: settings.optimalHour,
+      default_platforms: settings.defaultPlatforms,
+      ai_model: settings.aiModel,
+      linkedin_connected: settings.linkedinConnected,
+      instagram_connected: settings.instagramConnected,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' })
+
     setSaved(true)
     setToast(true)
     setTimeout(() => setToast(false), 2500)
   }
+
+  async function handleReset() {
+    if (!window.confirm('Réinitialiser tous les paramètres ?')) return
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      await supabase.from('user_settings').delete().eq('user_id', user.id)
+    }
+    setSettings(DEFAULT)
+    setSaved(false)
+  }
+
+  if (loading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+      <div style={{ color: 'rgba(255,255,255,0.3)', fontSize: 13 }}>Chargement...</div>
+    </div>
+  )
 
   return (
     <div style={{ maxWidth: 680, margin: '0 auto', padding: '40px 24px 80px' }}>
@@ -366,13 +420,7 @@ export default function SettingsPage() {
             <button
               className="btn btn-danger"
               style={{ fontSize: 12 }}
-              onClick={() => {
-                if (window.confirm('Réinitialiser tous les paramètres ?')) {
-                  setSettings(DEFAULT)
-                  localStorage.removeItem(STORAGE_KEY)
-                  setSaved(false)
-                }
-              }}
+              onClick={() => handleReset()}
             >
               Réinitialiser
             </button>
