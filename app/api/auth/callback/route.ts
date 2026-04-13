@@ -25,5 +25,7 @@ export async function GET(req: NextRequest) {
     await supabase.auth.exchangeCodeForSession(code)
   }
 
-  return NextResponse.redirect(new URL(redirectTo, req.url))
+  // Valider que redirectTo est un chemin relatif interne
+  const safeRedirectTo = redirectTo.startsWith('/') ? redirectTo : '/dashboard'
+  return NextResponse.redirect(new URL(safeRedirectTo, req.url))
 }

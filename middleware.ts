@@ -2,7 +2,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextRequest, NextResponse } from 'next/server'
 
-const PUBLIC_PATHS = ['/login', '/api/auth']
+const PUBLIC_PATHS = ['/login']
+const PUBLIC_API_PATHS = ['/api/auth'] // Seul le callback auth est public
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
@@ -10,7 +11,7 @@ export async function middleware(req: NextRequest) {
   // Laisser passer les routes publiques et API internes
   if (
     PUBLIC_PATHS.some(p => pathname.startsWith(p)) ||
-    pathname.startsWith('/api/') ||
+    PUBLIC_API_PATHS.some(p => pathname.startsWith(p)) ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon')
   ) {
