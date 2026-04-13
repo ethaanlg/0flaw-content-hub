@@ -11,6 +11,9 @@ export type Post = {
   instagram_post_id: string | null
   pdf_url: string | null
   slides_urls: string[] | null
+  content_type: ContentType
+  linkedin_text: string | null
+  instagram_text: string | null
   created_at: string
   updated_at: string
 }
@@ -38,4 +41,26 @@ export type Settings = {
   aiModel: string
   linkedinConnected: boolean
   instagramConnected: boolean
+}
+
+export type ContentType = 'carousel' | 'text'
+
+export type CuratedTopic = {
+  id: string             // stable slug, e.g. "phishing-pme"
+  title: string
+  description: string
+  category: 'menaces' | 'conformite' | 'sensibilisation'
+}
+
+export type UserTopic = {
+  id: string             // UUID from Supabase
+  title: string
+  description: string | null
+  category: string
+  created_at: string
+}
+
+export type TextPost = {
+  linkedin: string
+  instagram: string
 }

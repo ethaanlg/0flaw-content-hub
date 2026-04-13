@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 export const GenerateBodySchema = z.object({
   topic: z.string().min(3, 'Sujet trop court (min 3 caractères)').max(200),
   title: z.string().max(200).optional(),
+  content_type: z.enum(['carousel', 'text']).optional().default('carousel'),
 })
 
 export const PublishBodySchema = z.object({
@@ -22,6 +23,18 @@ export const PostsUpdateBodySchema = z.object({
 
 export const StatsBodySchema = z.object({
   postId: z.string().uuid('postId doit être un UUID valide'),
+})
+
+export const GenerateTextPostSchema = z.object({
+  topic: z.string().min(3, 'Sujet trop court (min 3 caractères)').max(200),
+  title: z.string().max(200).optional(),
+  content_type: z.literal('text'),
+})
+
+export const TopicCreateSchema = z.object({
+  title: z.string().min(2, 'Titre trop court').max(100),
+  description: z.string().max(300).optional(),
+  category: z.string().max(50).optional(),
 })
 
 export function parseBody<T>(
