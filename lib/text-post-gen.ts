@@ -31,8 +31,9 @@ export async function generateTextPost(
   title: string,
   topic: string
 ): Promise<TextPost> {
-  const slug = topic.toLowerCase().trim().replace(/\s+/g, '-').slice(0, 80)
-  const cacheKey = `text-post:${slug}`
+  const topicSlug = topic.toLowerCase().trim().replace(/\s+/g, '-').slice(0, 60)
+  const titleSlug = title.toLowerCase().trim().replace(/\s+/g, '-').slice(0, 40)
+  const cacheKey = `text-post:${topicSlug}:${titleSlug}`
 
   return cachedOr(cacheKey, async () => {
     const userPrompt = `Rédige un post LinkedIn + caption Instagram sur :
@@ -81,7 +82,7 @@ Format JSON attendu :
       parsed = JSON.parse(match[0])
     }
 
-    if (!parsed.linkedin || !parsed.instagram) {
+    if (!parsed.linkedin?.trim() || !parsed.instagram?.trim()) {
       throw new Error('GPT-4o: champs linkedin ou instagram manquants dans la réponse')
     }
 
