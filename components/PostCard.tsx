@@ -2,23 +2,7 @@
 
 import React from 'react'
 import PlatformBadge from '@/components/PlatformBadge'
-
-type Post = {
-  id: string
-  title: string
-  topic: string | null
-  description: string | null
-  status: 'draft' | 'scheduled' | 'published' | 'failed'
-  platforms: string[]
-  scheduled_at: string | null
-  published_at: string | null
-  linkedin_post_id: string | null
-  instagram_post_id: string | null
-  pdf_url: string | null
-  slides_urls: string[] | null
-  created_at: string
-  updated_at: string
-}
+import type { Post } from '@/lib/types'
 
 type PostCardProps = {
   post: Post
