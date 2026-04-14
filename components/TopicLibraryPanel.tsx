@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import type { CuratedTopic, UserTopic } from '@/lib/types'
 
 type Category = 'menaces' | 'conformite' | 'sensibilisation' | 'custom'
@@ -20,13 +20,14 @@ type Props = {
 export default function TopicLibraryPanel({ onSelect, onClose }: Props) {
   const [curated, setCurated] = useState<CuratedTopic[]>([])
   const [userTopics, setUserTopics] = useState<UserTopic[]>([])
-  const [activeCategory, setActiveCategory] = useState<string>('menaces')
+  const [activeCategory, setActiveCategory] = useState<Category>('menaces')
   const [loading, setLoading] = useState(true)
   const [addTitle, setAddTitle] = useState('')
   const [addDesc, setAddDesc] = useState('')
   const [adding, setAdding] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const fetchTopics = useCallback(async () => {
     try {
@@ -43,6 +44,10 @@ export default function TopicLibraryPanel({ onSelect, onClose }: Props) {
   }, [])
 
   useEffect(() => { fetchTopics() }, [fetchTopics])
+
+  useEffect(() => () => {
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
+  }, [])
 
   async function handleAdd() {
     if (!addTitle.trim()) return
@@ -76,14 +81,15 @@ export default function TopicLibraryPanel({ onSelect, onClose }: Props) {
         setDeletingId(null)
       }
     } else {
+      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current)
       setDeletingId(id)
-      setTimeout(() => setDeletingId(null), 2000)
+      deleteTimerRef.current = setTimeout(() => setDeletingId(null), 2000)
     }
   }
 
   const filteredCurated = curated.filter(t => t.category === activeCategory)
 
-  const categories = ['menaces', 'conformite', 'sensibilisation', 'custom']
+  const categories: Category[] = ['menaces', 'conformite', 'sensibilisation', 'custom']
 
   return (
     <div style={{
