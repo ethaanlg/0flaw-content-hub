@@ -22,6 +22,9 @@ import { supabase } from '@/lib/supabase'
 import LoadingSpinner from '@/components/LoadingSpinner'
 import PlatformBadge from '@/components/PlatformBadge'
 import type { Slide } from '@/lib/slides-gen'
+import TopicLibraryPanel from '@/components/TopicLibraryPanel'
+import TextPostResult from '@/components/TextPostResult'
+import type { ContentType, TextPost } from '@/lib/types'
 
 // ─────────────────────────────────────────────
 // Constants
@@ -236,6 +239,11 @@ function Step1({
   setTopic,
   platforms,
   setPlatforms,
+  contentType,
+  setContentType,
+  showLibrary,
+  setShowLibrary,
+  onTopicSelect,
   onNext,
 }: {
   title: string
@@ -244,6 +252,11 @@ function Step1({
   setTopic: (v: string) => void
   platforms: string[]
   setPlatforms: (v: string[]) => void
+  contentType: ContentType
+  setContentType: (v: ContentType) => void
+  showLibrary: boolean
+  setShowLibrary: (v: boolean) => void
+  onTopicSelect: (title: string, description: string) => void
   onNext: () => void
 }) {
   const canNext = title.length >= 3 && topic.length >= 3
@@ -257,7 +270,41 @@ function Step1({
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* Content type selector */}
+      <div>
+        <label className="section-label" style={{ display: 'block', marginBottom: 12 }}>
+          Type de contenu
+        </label>
+        <div style={{ display: 'flex', gap: 10 }}>
+          {(['carousel', 'text'] as ContentType[]).map(type => (
+            <button
+              key={type}
+              onClick={() => setContentType(type)}
+              style={{
+                flex: 1,
+                padding: '12px 16px',
+                borderRadius: 12,
+                cursor: 'pointer',
+                textAlign: 'center' as const,
+                background: contentType === type ? 'rgba(79,111,255,0.12)' : 'rgba(255,255,255,0.04)',
+                border: `1px solid ${contentType === type ? 'rgba(79,111,255,0.4)' : 'var(--border)'}`,
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <div style={{ fontSize: 20, marginBottom: 4 }}>{type === 'carousel' ? '📊' : '✍️'}</div>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#fff' }}>
+                {type === 'carousel' ? 'Carrousel' : 'Post texte'}
+              </div>
+              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2 }}>
+                {type === 'carousel' ? '7 slides · PDF' : 'LinkedIn + caption IG'}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div>
         <label className="section-label" style={{ display: 'block', marginBottom: 8 }}>
           Titre du post
@@ -288,7 +335,7 @@ function Step1({
 
       <div>
         <label className="section-label" style={{ display: 'block', marginBottom: 8 }}>
-          Sujet du carrousel
+          Angle / contexte
         </label>
         <textarea
           value={topic}
@@ -402,16 +449,44 @@ function Step1({
       </div>
 
       {/* Next button */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, gap: 10 }}>
+        <button
+          onClick={() => setShowLibrary(!showLibrary)}
+          style={{
+            padding: '0 20px',
+            height: 48,
+            borderRadius: 12,
+            background: showLibrary ? 'rgba(79,111,255,0.12)' : 'rgba(255,255,255,0.05)',
+            border: showLibrary ? '1px solid rgba(79,111,255,0.4)' : '1px solid var(--border)',
+            fontSize: 13,
+            fontWeight: 700,
+            color: showLibrary ? '#7a94ff' : 'rgba(255,255,255,0.5)',
+            cursor: 'pointer',
+            whiteSpace: 'nowrap' as const,
+          }}
+        >
+          📚 Topics
+        </button>
         <button
           className="btn btn-primary"
           onClick={onNext}
           disabled={!canNext}
-          style={{ opacity: canNext ? 1 : 0.4, cursor: canNext ? 'pointer' : 'not-allowed' }}
+          style={{ flex: 1 }}
         >
           Suivant →
         </button>
       </div>
+      </div>
+
+      {/* Topic library panel */}
+      {showLibrary && (
+        <TopicLibraryPanel
+          onSelect={(selectedTitle, description) => {
+            onTopicSelect(selectedTitle, description)
+          }}
+          onClose={() => setShowLibrary(false)}
+        />
+      )}
     </div>
   )
 }
@@ -422,11 +497,15 @@ function Step1({
 function Step2({
   title,
   topic,
+  contentType,
   onDone,
+  onDoneText,
 }: {
   title: string
   topic: string
+  contentType?: ContentType
   onDone: (data: { v1: string; v2: string; v3: string; slides: Slide[]; pdfUrl: string }) => void
+  onDoneText?: (data: TextPost) => void
 }) {
   const [genStep, setGenStep] = useState(-1)
   const [genError, setGenError] = useState('')
@@ -440,11 +519,18 @@ function Step2({
       const genRes = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, title }),
+        body: JSON.stringify({ topic, title, content_type: contentType ?? 'carousel' }),
       })
       if (!genRes.ok) throw new Error('Erreur génération')
       const genData = await genRes.json()
       if (genData.error) throw new Error(genData.error)
+
+      if (contentType === 'text') {
+        setGenStep(3)
+        onDoneText?.({ linkedin: genData.linkedin, instagram: genData.instagram })
+        return
+      }
+
       setGenStep(1)
 
       // Step 2 — Render PDF
@@ -1277,6 +1363,11 @@ export default function CreatePage() {
   const [saving, setSaving] = useState(false)
   const [savedId, setSavedId] = useState<string | null>(null)
 
+  // Content type + library
+  const [contentType, setContentType] = useState<ContentType>('carousel')
+  const [showLibrary, setShowLibrary] = useState(false)
+  const [textPost, setTextPost] = useState<TextPost | null>(null)
+
   // Global
   const [error, setError] = useState('')
   const [toast, setToast] = useState<{ msg: string; type: ToastType } | null>(null)
@@ -1333,6 +1424,9 @@ export default function CreatePage() {
     setSaving(false)
     setSavedId(null)
     setError('')
+    setContentType('carousel')
+    setShowLibrary(false)
+    setTextPost(null)
   }
 
   return (
@@ -1392,6 +1486,14 @@ export default function CreatePage() {
             setTopic={setTopic}
             platforms={platforms}
             setPlatforms={setPlatforms}
+            contentType={contentType}
+            setContentType={setContentType}
+            showLibrary={showLibrary}
+            setShowLibrary={setShowLibrary}
+            onTopicSelect={(selectedTitle, description) => {
+              setTitle(selectedTitle)
+              setTopic(description)
+            }}
             onNext={() => setStep(2)}
           />
         )}
@@ -1400,6 +1502,7 @@ export default function CreatePage() {
           <Step2
             title={title}
             topic={topic}
+            contentType={contentType}
             onDone={(data) => {
               setDescriptions({ v1: data.v1, v2: data.v2, v3: data.v3 })
               setSlides(data.slides)
@@ -1408,10 +1511,33 @@ export default function CreatePage() {
               setActiveVariant('v3')
               setStep(3)
             }}
+            onDoneText={(data) => {
+              setTextPost(data)
+              setStep(3)
+            }}
           />
         )}
 
-        {step === 3 && descriptions && (
+        {step === 3 && contentType === 'text' && textPost && (
+          <TextPostResult
+            textPost={textPost}
+            topic={topic}
+            title={title}
+            onRegenerate={async () => {
+              const res = await fetch('/api/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ topic, title, content_type: 'text' }),
+              })
+              const data = await res.json()
+              if (data.linkedin && data.instagram) {
+                setTextPost({ linkedin: data.linkedin, instagram: data.instagram })
+              }
+            }}
+          />
+        )}
+
+        {step === 3 && contentType === 'carousel' && descriptions && (
           <Step3
             descriptions={descriptions}
             setDescriptions={setDescriptions}
