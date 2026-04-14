@@ -37,6 +37,18 @@ export const TopicCreateSchema = z.object({
   category: z.string().max(50).default('custom'),
 })
 
+export const PostCreateSchema = z.object({
+  title: z.string().min(1).max(300),
+  topic: z.string().max(500).optional(),
+  content_type: z.enum(['carousel', 'text']).default('carousel'),
+  platforms: z.array(z.string()).min(1),
+  status: z.enum(['draft', 'scheduled', 'published', 'failed']).default('draft'),
+  linkedin_text: z.string().nullable().optional(),
+  instagram_text: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+  scheduled_at: z.string().nullable().optional(),
+})
+
 export function parseBody<T>(
   schema: z.ZodType<T>,
   data: unknown

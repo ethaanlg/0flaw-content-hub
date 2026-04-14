@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { PostsUpdateBodySchema, parseBody } from '@/lib/zod-schemas'
+import { PostsUpdateBodySchema, PostCreateSchema, parseBody } from '@/lib/zod-schemas'
 
 // GET /api/posts?from=...&to=...&status=...&platform=...&limit=50&cursor=<uuid>
 export async function GET(req: NextRequest) {
@@ -57,30 +57,62 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const parsed = parseBody(PostsUpdateBodySchema, await req.json())
-    if (!parsed.success) return parsed.response
+    const body = await req.json()
 
-    const { id, status, scheduledAt } = parsed.data
-    const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
+    // Branch: if body has `id`, it's an update; otherwise it's a create
+    if (body.id !== undefined) {
+      // Existing UPDATE path
+      const parsed = parseBody(PostsUpdateBodySchema, body)
+      if (!parsed.success) return parsed.response
 
-    if (status !== undefined) updates.status = status
+      const { id, status, scheduledAt } = parsed.data
+      const updates: Record<string, unknown> = { updated_at: new Date().toISOString() }
 
-    if (scheduledAt !== undefined) {
-      updates.scheduled_at = scheduledAt ? new Date(scheduledAt).toISOString() : null
-      if (scheduledAt && !updates.status) updates.status = 'scheduled'
+      if (status !== undefined) updates.status = status
+
+      if (scheduledAt !== undefined) {
+        updates.scheduled_at = scheduledAt ? new Date(scheduledAt).toISOString() : null
+        if (scheduledAt && !updates.status) updates.status = 'scheduled'
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from('posts')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json({ post: data })
     }
+
+    // CREATE path
+    const parsed = parseBody(PostCreateSchema, body)
+    if (!parsed.success) return parsed.response
 
     const { data, error } = await supabaseAdmin
       .from('posts')
-      .update(updates)
-      .eq('id', id)
+      .insert({
+        title: parsed.data.title,
+        topic: parsed.data.topic ?? null,
+        content_type: parsed.data.content_type,
+        platforms: parsed.data.platforms,
+        status: parsed.data.status,
+        linkedin_text: parsed.data.linkedin_text ?? null,
+        instagram_text: parsed.data.instagram_text ?? null,
+        description: parsed.data.description ?? null,
+        scheduled_at: parsed.data.scheduled_at ?? null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
       .select()
       .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ post: data })
+    return NextResponse.json(data, { status: 201 })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Erreur inconnue'
+    console.error('[/api/posts POST] Error:', message)
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
