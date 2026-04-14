@@ -1,6 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { PostsUpdateBodySchema, PostCreateSchema, parseBody } from '@/lib/zod-schemas'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+
+function createUserClient() {
+  const cookieStore = cookies()
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: (newCookies) =>
+          newCookies.forEach(({ name, value, options }) =>
+            cookieStore.set(name, value, options)
+          ),
+      },
+    }
+  )
+}
 
 // GET /api/posts?from=...&to=...&status=...&platform=...&limit=50&cursor=<uuid>
 export async function GET(req: NextRequest) {
@@ -90,9 +109,15 @@ export async function POST(req: NextRequest) {
     const parsed = parseBody(PostCreateSchema, body)
     if (!parsed.success) return parsed.response
 
+    // Get authenticated user for user_id
+    const userClient = createUserClient()
+    const { data: { user } } = await userClient.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+
     const { data, error } = await supabaseAdmin
       .from('posts')
       .insert({
+        user_id: user.id,
         title: parsed.data.title,
         topic: parsed.data.topic ?? null,
         content_type: parsed.data.content_type,
