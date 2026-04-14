@@ -79,6 +79,8 @@ export default function TextPostResult({ textPost, topic, title, onRegenerate }:
         body: JSON.stringify({ postId: post.id }),
       })
       if (!pubRes.ok) throw new Error('Publication échouée')
+      const pubData = await pubRes.json()
+      if (!pubData.success) throw new Error(pubData.errors?.join(', ') || 'Publication échouée')
       setPublishedPlatforms(prev => [...prev, platform])
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erreur publication')
@@ -113,6 +115,8 @@ export default function TextPostResult({ textPost, topic, title, onRegenerate }:
         body: JSON.stringify({ postId: post.id }),
       })
       if (!pubRes.ok) throw new Error('Publication échouée')
+      const pubData = await pubRes.json()
+      if (!pubData.success) throw new Error(pubData.errors?.join(', ') || 'Publication échouée')
       setPublishedPlatforms(['linkedin', 'instagram'])
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erreur publication')
@@ -222,7 +226,7 @@ export default function TextPostResult({ textPost, topic, title, onRegenerate }:
                     fontSize: 11, fontWeight: 700, color: cfg.color, cursor: 'pointer',
                     opacity: (!!publishing || isPublished) ? 0.5 : 1,
                   }}
-                >{publishing === platform ? '…' : isPublished ? '✓' : 'Publier →'}</button>
+                >{(publishing === platform || publishing === 'both') ? '…' : isPublished ? '✓' : 'Publier →'}</button>
               </div>
             </div>
           )
