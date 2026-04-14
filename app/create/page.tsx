@@ -1530,6 +1530,7 @@ export default function CreatePage() {
                 body: JSON.stringify({ topic, title, content_type: 'text' }),
               })
               const data = await res.json()
+              if (!res.ok) throw new Error(data.error ?? 'Erreur régénération')
               if (data.linkedin && data.instagram) {
                 setTextPost({ linkedin: data.linkedin, instagram: data.instagram })
               }
