@@ -68,12 +68,17 @@ export async function GET(req: NextRequest) {
         const errMsg = connError?.message ?? 'Connexion plateforme introuvable'
         console.error(`[publish-scheduled] no connection for ${platform} / user ${post.user_id}:`, errMsg)
 
-        await supabaseAdmin.from('post_publications').insert({
+        const { error: pubInsertError } = await supabaseAdmin.from('post_publications').insert({
           post_id: post.id,
           platform,
           status: 'failed',
           error_message: errMsg,
         })
+
+        if (pubInsertError) {
+          console.error(`[publish-cron] Failed to insert post_publication for ${post.id}/${platform}:`, pubInsertError.message)
+        }
+
         platformResults[platform] = 'failed'
         anyFailed = true
         continue
@@ -90,7 +95,7 @@ export async function GET(req: NextRequest) {
         const adapter = getAdapter(platform)
         const result = await adapter.publish(content, tokens)
 
-        await supabaseAdmin.from('post_publications').insert({
+        const { error: pubInsertError } = await supabaseAdmin.from('post_publications').insert({
           post_id: post.id,
           platform,
           external_id: result.externalId ?? null,
@@ -99,32 +104,49 @@ export async function GET(req: NextRequest) {
           error_message: result.error ?? null,
         })
 
+        if (pubInsertError) {
+          console.error(`[publish-cron] Failed to insert post_publication for ${post.id}/${platform}:`, pubInsertError.message)
+        }
+
         platformResults[platform] = result.success ? 'success' : 'failed'
         if (!result.success) anyFailed = true
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Erreur inconnue'
         console.error(`[publish-scheduled] publish error for ${platform}:`, message)
 
-        await supabaseAdmin.from('post_publications').insert({
+        const { error: pubInsertError } = await supabaseAdmin.from('post_publications').insert({
           post_id: post.id,
           platform,
           status: 'failed',
           error_message: message,
         })
+
+        if (pubInsertError) {
+          console.error(`[publish-cron] Failed to insert post_publication for ${post.id}/${platform}:`, pubInsertError.message)
+        }
+
         platformResults[platform] = 'failed'
         anyFailed = true
       }
     }
 
     // Update post final status
-    const finalStatus = anyFailed ? 'failed' : 'published'
-    await supabaseAdmin
+    const { error: finalUpdateError } = await supabaseAdmin
       .from('posts')
       .update({
-        status: finalStatus,
+        status: anyFailed ? 'failed' : 'published',
         published_at: anyFailed ? null : new Date().toISOString(),
       })
       .eq('id', post.id)
+
+    if (finalUpdateError) {
+      console.error(`[publish-cron] Failed to update final status for post ${post.id}:`, finalUpdateError.message)
+      // Reset to 'scheduled' so the post can be retried on the next cron run
+      await supabaseAdmin
+        .from('posts')
+        .update({ status: 'scheduled' })
+        .eq('id', post.id)
+    }
 
     results.push({ postId: post.id, platforms: platformResults })
     processed++
