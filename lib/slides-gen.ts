@@ -3,6 +3,8 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { cachedOr } from './kv-cache'
 
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+
 export type SlideTag = {
   icon?: string            // ex: "△", "€", "→", "○", emoji
   label: string            // ex: "PROBLÈME", "COÛT RÉEL", "DÉCLIC"
@@ -131,8 +133,6 @@ export async function generateCarouselSlides(
   const cacheKey = `slides:${topic.toLowerCase().trim().replace(/\s+/g, '-').slice(0, 80)}`
 
   return cachedOr(cacheKey, async () => {
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
-
     const userPrompt = `Carrousel LinkedIn 7 slides sur :
 Titre : "${title}"
 Angle/contexte : "${topic}"

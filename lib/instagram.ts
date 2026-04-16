@@ -3,20 +3,22 @@
 import { withRetry } from './retry'
 
 const META_BASE = 'https://graph.facebook.com/v19.0'
-const IG_ID = process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID
-const TOKEN = process.env.META_ACCESS_TOKEN
 
 // Publier un carrousel Instagram (tableau d'URLs d'images PNG)
 export async function publishInstagramCarousel(
   caption: string,
-  imageUrls: string[]
+  imageUrls: string[],
+  token?: string,
+  igId?: string
 ): Promise<string> {
   return withRetry(async () => {
+    const effectiveToken = token ?? process.env.META_ACCESS_TOKEN ?? ''
+    const effectiveIgId = igId ?? process.env.INSTAGRAM_BUSINESS_ACCOUNT_ID ?? ''
     // Étape 1 : créer un container pour chaque image
     const childIds: string[] = []
     for (const imageUrl of imageUrls) {
       const res = await fetch(
-        `${META_BASE}/${IG_ID}/media?image_url=${encodeURIComponent(imageUrl)}&is_carousel_item=true&access_token=${TOKEN}`,
+        `${META_BASE}/${effectiveIgId}/media?image_url=${encodeURIComponent(imageUrl)}&is_carousel_item=true&access_token=${effectiveToken}`,
         { method: 'POST' }
       )
       const data = await res.json()
@@ -25,26 +27,26 @@ export async function publishInstagramCarousel(
     }
 
     // Étape 2 : créer le container carrousel
-    const carouselRes = await fetch(`${META_BASE}/${IG_ID}/media`, {
+    const carouselRes = await fetch(`${META_BASE}/${effectiveIgId}/media`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         media_type: 'CAROUSEL',
         children: childIds,
         caption,
-        access_token: TOKEN
+        access_token: effectiveToken
       })
     })
     const carouselData = await carouselRes.json()
     if (!carouselData.id) throw new Error(`Erreur container carrousel: ${JSON.stringify(carouselData)}`)
 
     // Étape 3 : publier
-    const publishRes = await fetch(`${META_BASE}/${IG_ID}/media_publish`, {
+    const publishRes = await fetch(`${META_BASE}/${effectiveIgId}/media_publish`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         creation_id: carouselData.id,
-        access_token: TOKEN
+        access_token: effectiveToken
       })
     })
     const publishData = await publishRes.json()
@@ -53,11 +55,12 @@ export async function publishInstagramCarousel(
 }
 
 // Récupérer les stats d'un post Instagram
-export async function getInstagramPostStats(mediaId: string) {
+export async function getInstagramPostStats(mediaId: string, token?: string) {
   return withRetry(async () => {
+    const effectiveToken = token ?? process.env.META_ACCESS_TOKEN ?? ''
     const fields = 'impressions,reach,likes_count,comments_count,shares,saved,total_interactions'
     const res = await fetch(
-      `${META_BASE}/${mediaId}/insights?metric=${fields}&access_token=${TOKEN}`
+      `${META_BASE}/${mediaId}/insights?metric=${fields}&access_token=${effectiveToken}`
     )
     const data = await res.json()
     const metrics: Record<string, number> = {}

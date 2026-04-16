@@ -5,25 +5,22 @@ export const linkedinAdapter: PlatformAdapter = {
 
   async publish(content: PostContent, tokens: OAuthTokens): Promise<PublishResult> {
     try {
-      // Dynamically set the token for this call
-      const prevToken = process.env.LINKEDIN_ACCESS_TOKEN
-      process.env.LINKEDIN_ACCESS_TOKEN = tokens.accessToken
-
       const { publishLinkedInPost } = await import('../linkedin')
 
-      // publishLinkedInPost expects: (text: string, pdfUrl: string, pdfTitle: string)
+      // publishLinkedInPost expects: (text: string, pdfUrl: string, pdfTitle: string, token?: string)
       // We support PDF-based posts; text content goes in the commentary
       if (!content.pdfUrl) {
         throw new Error('LinkedIn adapter currently requires a pdfUrl for content')
       }
 
+      const pdfTitle = content.text.slice(0, 60).replace(/\n[\s\S]*/g, '').trim() || 'Carrousel 0Flaw'
       const postId = await publishLinkedInPost(
         content.text,
         content.pdfUrl,
-        'Content Document' // Default title if not provided
+        pdfTitle,
+        tokens.accessToken
       )
 
-      process.env.LINKEDIN_ACCESS_TOKEN = prevToken
       return { success: true, externalId: postId }
     } catch (e) {
       return { success: false, error: (e as Error).message }
@@ -31,14 +28,9 @@ export const linkedinAdapter: PlatformAdapter = {
   },
 
   async getAnalytics(externalId: string, tokens: OAuthTokens): Promise<PostAnalytics> {
-    const prevToken = process.env.LINKEDIN_ACCESS_TOKEN
-    process.env.LINKEDIN_ACCESS_TOKEN = tokens.accessToken
-
     try {
       const { getLinkedInPostStats } = await import('../linkedin')
-      const stats = await getLinkedInPostStats(externalId)
-
-      process.env.LINKEDIN_ACCESS_TOKEN = prevToken
+      const stats = await getLinkedInPostStats(externalId, tokens.accessToken)
 
       return {
         postId: externalId,
@@ -55,7 +47,6 @@ export const linkedinAdapter: PlatformAdapter = {
         collectedAt: new Date(),
       }
     } catch (e) {
-      process.env.LINKEDIN_ACCESS_TOKEN = prevToken
       throw e
     }
   },

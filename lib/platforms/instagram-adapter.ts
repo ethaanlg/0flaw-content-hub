@@ -5,16 +5,13 @@ export const instagramAdapter: PlatformAdapter = {
 
   async publish(content: PostContent, tokens: OAuthTokens): Promise<PublishResult> {
     try {
-      const prevToken = process.env.META_ACCESS_TOKEN
-      process.env.META_ACCESS_TOKEN = tokens.accessToken
-
       const { publishInstagramCarousel } = await import('../instagram')
       const postId = await publishInstagramCarousel(
         content.text,
-        content.mediaUrls ?? []
+        content.mediaUrls ?? [],
+        tokens.accessToken
       )
 
-      process.env.META_ACCESS_TOKEN = prevToken
       return { success: true, externalId: postId }
     } catch (e) {
       return { success: false, error: (e as Error).message }
@@ -22,13 +19,8 @@ export const instagramAdapter: PlatformAdapter = {
   },
 
   async getAnalytics(externalId: string, tokens: OAuthTokens): Promise<PostAnalytics> {
-    const prevToken = process.env.META_ACCESS_TOKEN
-    process.env.META_ACCESS_TOKEN = tokens.accessToken
-
     const { getInstagramPostStats } = await import('../instagram')
-    const stats = await getInstagramPostStats(externalId)
-
-    process.env.META_ACCESS_TOKEN = prevToken
+    const stats = await getInstagramPostStats(externalId, tokens.accessToken)
 
     const impressions = stats?.impressions ?? 0
     const likes = stats?.likes ?? 0

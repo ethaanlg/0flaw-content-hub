@@ -4,11 +4,10 @@ import { withRetry } from './retry'
 
 const LI_BASE = 'https://api.linkedin.com/v2'
 const ORG_ID = process.env.LINKEDIN_ORGANIZATION_ID
-const TOKEN = process.env.LINKEDIN_ACCESS_TOKEN
 
-function headers() {
+function headers(token: string) {
   return {
-    'Authorization': `Bearer ${TOKEN}`,
+    'Authorization': 'Bearer ' + token,
     'Content-Type': 'application/json',
     'X-Restli-Protocol-Version': '2.0.0',
   }
@@ -18,13 +17,15 @@ function headers() {
 export async function publishLinkedInPost(
   text: string,
   pdfUrl: string,
-  pdfTitle: string
+  pdfTitle: string,
+  token?: string
 ): Promise<string> {
   return withRetry(async () => {
+    const effectiveToken = token ?? process.env.LINKEDIN_ACCESS_TOKEN ?? ''
     // Étape 1 : initialiser l'upload du document
     const initRes = await fetch(`${LI_BASE}/assets?action=registerUpload`, {
       method: 'POST',
-      headers: headers(),
+      headers: headers(effectiveToken),
       body: JSON.stringify({
         registerUploadRequest: {
           recipes: ['urn:li:digitalmediaRecipe:feedshare-document'],
@@ -54,7 +55,7 @@ export async function publishLinkedInPost(
     // Étape 3 : créer le post
     const postRes = await fetch(`${LI_BASE}/ugcPosts`, {
       method: 'POST',
-      headers: headers(),
+      headers: headers(effectiveToken),
       body: JSON.stringify({
         author: `urn:li:organization:${ORG_ID}`,
         lifecycleState: 'PUBLISHED',
@@ -83,13 +84,14 @@ export async function publishLinkedInPost(
 }
 
 // Récupérer les stats d'un post LinkedIn
-export async function getLinkedInPostStats(postId: string) {
+export async function getLinkedInPostStats(postId: string, token?: string) {
   return withRetry(async () => {
+    const effectiveToken = token ?? process.env.LINKEDIN_ACCESS_TOKEN ?? ''
     // Encoder l'URN pour l'URL
     const encodedId = encodeURIComponent(postId)
     const res = await fetch(
       `${LI_BASE}/organizationalEntityShareStatistics?q=organizationalEntity&organizationalEntity=urn:li:organization:${ORG_ID}&ugcPosts=List(${encodedId})`,
-      { headers: headers() }
+      { headers: headers(effectiveToken) }
     )
     const data = await res.json()
     const stats = data.elements?.[0]?.totalShareStatistics || {}
