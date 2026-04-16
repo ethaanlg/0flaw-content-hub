@@ -1,5 +1,6 @@
-// GPT-4o carousel generation — structure based on 0Flaw reference carousel
+// Anthropic Claude carousel generation — structure based on 0Flaw reference carousel
 // Each slide maps 1:1 to a visual template in the renderer
+import Anthropic from '@anthropic-ai/sdk'
 import { cachedOr } from './kv-cache'
 
 export type SlideTag = {
@@ -130,66 +131,58 @@ export async function generateCarouselSlides(
   const cacheKey = `slides:${topic.toLowerCase().trim().replace(/\s+/g, '-').slice(0, 80)}`
 
   return cachedOr(cacheKey, async () => {
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+
     const userPrompt = `Carrousel LinkedIn 7 slides sur :
 Titre : "${title}"
 Angle/contexte : "${topic}"
 
-Génère le JSON complet avec les 7 slides dans l'ordre : cover → problem → stat → insight → system → proof → cta.
+Génère le JSON complet avec les 7 slides dans l'ordre : cover → problem → stat → insight → system → proof → cta.`
 
-Format attendu :
-{
-  "slides": [
-    { "type": "cover", "tag": {"icon": "🔒", "label": "SENSIBILISATION [SUJET]", "color": "white"}, "headline": "...", "accentPhrase": "...", "body": "..." },
-    { "type": "problem", "tag": {"icon": "△", "label": "PROBLÈME", "color": "red"}, "headline": "...", "accentPhrase": "...", "bullets": ["...", "...", "..."] },
-    { "type": "stat", "tag": {"icon": "€", "label": "COÛT RÉEL", "color": "red"}, "stat": "...", "statLabel": "...", "body": "..." },
-    { "type": "insight", "tag": {"icon": "→", "label": "DÉCLIC", "color": "accent"}, "icon": "💡", "headline": "...", "accentPhrase": "...", "body": "..." },
-    { "type": "system", "tag": {"icon": "○", "label": "SYSTÈME 0FLAW", "color": "accent"}, "headline": "...", "steps": [{"num":1,"text":"...","timing":"..."},{"num":2,"text":"...","timing":"..."},{"num":3,"text":"...","timing":"..."},{"num":4,"text":"...","timing":"..."}] },
-    { "type": "proof", "tag": {"icon": "→", "label": "RÉSULTATS MESURÉS", "color": "green"}, "stat": "...", "quote": "...", "source": "...", "bullets": ["...", "..."] },
-    { "type": "cta", "tag": {"icon": "→", "label": "PASSEZ À L'ACTION", "color": "accent"}, "headline": "...", "accentPhrase": "...", "offer": "...", "button": "0FLAW.FR →", "credibility": "..." }
-  ]
-}`
-
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY!}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        max_tokens: 3000,
-        temperature: 0.72,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user',   content: userPrompt },
-        ],
-      }),
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 4096,
+      system: SYSTEM_PROMPT,
+      tools: [
+        {
+          name: 'generate_carousel',
+          description: 'Génère un carrousel LinkedIn 7 slides structuré',
+          input_schema: {
+            type: 'object' as const,
+            properties: {
+              slides: {
+                type: 'array',
+                minItems: 7,
+                maxItems: 7,
+                items: {
+                  type: 'object',
+                  properties: {
+                    type: { type: 'string', enum: ['cover', 'problem', 'stat', 'insight', 'system', 'proof', 'cta'] }
+                  },
+                  required: ['type'],
+                  additionalProperties: true
+                }
+              }
+            },
+            required: ['slides']
+          }
+        }
+      ],
+      tool_choice: { type: 'tool', name: 'generate_carousel' },
+      messages: [{ role: 'user', content: userPrompt }]
     })
 
-    const data = await res.json()
-
-    if (!res.ok) {
-      const msg = data?.error?.message ?? `HTTP ${res.status}`
-      throw new Error(`OpenAI API error (carousel): ${msg}`)
+    const toolBlock = response.content.find(b => b.type === 'tool_use')
+    if (!toolBlock || toolBlock.type !== 'tool_use') {
+      throw new Error('Claude: no tool_use block in carousel response')
     }
 
-    const raw: string = data.choices?.[0]?.message?.content ?? ''
+    const result = toolBlock.input as { slides: Slide[] }
 
-    let parsed: { slides: Slide[] }
-    try {
-      parsed = JSON.parse(raw)
-    } catch {
-      // Fallback: extract first JSON block if model added text around it
-      const match = raw.match(/\{[\s\S]*\}/)
-      if (!match) throw new Error(`Réponse GPT-4o non-JSON — reçu : ${raw.slice(0, 200)}`)
-      parsed = JSON.parse(match[0])
+    if (!Array.isArray(result.slides) || result.slides.length !== 7) {
+      throw new Error(`Claude: expected 7 slides, got ${result.slides?.length ?? 0}`)
     }
 
-    if (!Array.isArray(parsed.slides) || parsed.slides.length !== 7) {
-      throw new Error(`GPT-4o a retourné ${parsed.slides?.length ?? 0} slides (attendu : 7)`)
-    }
-
-    return parsed.slides
+    return result.slides
   })
 }
