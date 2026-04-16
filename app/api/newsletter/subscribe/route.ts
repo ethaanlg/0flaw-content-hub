@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (existing?.confirmed_at && !existing?.unsubscribed_at) {
-      return NextResponse.json({ message: 'Déjà inscrit' }, { status: 200 })
+      return NextResponse.json({ message: 'Email de confirmation envoyé' }, { status: 200 })
     }
 
     // Generate confirmation token
@@ -36,7 +36,13 @@ export async function POST(req: NextRequest) {
     const consentIp =
       req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
 
-    // Upsert subscriber
+    // Build confirmation URL and send email BEFORE persisting — if Brevo fails,
+    // nothing is stored and the user can retry cleanly.
+    const confirmUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/newsletter/confirm?token=${token}`
+
+    await sendConfirmationEmail({ email, firstName, confirmUrl })
+
+    // Upsert subscriber only after email was sent successfully
     const { error: upsertError } = await supabaseAdmin
       .from('newsletter_subscribers')
       .upsert(
@@ -57,11 +63,6 @@ export async function POST(req: NextRequest) {
       console.error('[newsletter/subscribe] upsert error:', upsertError)
       return NextResponse.json({ error: 'Erreur interne' }, { status: 500 })
     }
-
-    // Build confirmation URL and send email
-    const confirmUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/newsletter/confirm?token=${token}`
-
-    await sendConfirmationEmail({ email, firstName, confirmUrl })
 
     return NextResponse.json({ message: 'Email de confirmation envoyé' }, { status: 200 })
   } catch (err) {

@@ -44,3 +44,6 @@ create policy "Authenticated users manage campaigns"
 create index newsletter_subscribers_email on newsletter_subscribers(email);
 create index newsletter_subscribers_confirmed on newsletter_subscribers(confirmed_at) where confirmed_at is not null;
 create index newsletter_campaigns_status on newsletter_campaigns(status);
+create index newsletter_subscribers_confirm_token
+  on newsletter_subscribers(confirm_token)
+  where confirm_token is not null;

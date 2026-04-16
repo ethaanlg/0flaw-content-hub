@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
       email: subscriber.email as string,
       firstName: subscriber.first_name as string | undefined,
       company: subscriber.company as string | undefined,
-      listId: 1,
+      listId: Number(process.env.BREVO_LIST_ID ?? '1'),
     })
     brevoContactId = brevoResult.id
   } catch (brevoErr) {
@@ -48,6 +48,7 @@ export async function GET(req: NextRequest) {
     .update({
       confirmed_at: new Date().toISOString(),
       confirm_token: null,
+      confirm_token_expires_at: null,
       ...(brevoContactId != null ? { brevo_contact_id: brevoContactId } : {}),
     })
     .eq('id', subscriber.id)

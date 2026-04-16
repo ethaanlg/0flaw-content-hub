@@ -1,5 +1,14 @@
 import { BrevoClient } from '@getbrevo/brevo'
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
 // Lazily instantiated — server-side only
 function getClient(): BrevoClient {
   return new BrevoClient({ apiKey: process.env.BREVO_API_KEY! })
@@ -45,7 +54,7 @@ export async function sendConfirmationEmail(params: {
 }): Promise<void> {
   const client = getClient()
 
-  const greeting = params.firstName ? `Bonjour ${params.firstName},` : 'Bonjour,'
+  const greeting = params.firstName ? `Bonjour ${escapeHtml(params.firstName)},` : 'Bonjour,'
 
   await client.transactionalEmails.sendTransacEmail({
     sender: { name: '0Flaw', email: 'noreply@0flaw.fr' },
@@ -65,7 +74,7 @@ export async function sendConfirmationEmail(params: {
           Cliquez sur le bouton ci-dessous pour confirmer votre inscription.
         </p>
         <p style="text-align: center; margin: 0 0 24px;">
-          <a href="${params.confirmUrl}"
+          <a href="${escapeHtml(params.confirmUrl)}"
              style="display: inline-block; background-color: #00E5FF; color: #000000; font-weight: bold;
                     padding: 12px 24px; border-radius: 8px; text-decoration: none; font-size: 16px;">
             Confirmer mon inscription
