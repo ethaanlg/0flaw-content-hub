@@ -1,6 +1,9 @@
-// GPT-4o text post generation — LinkedIn full post + Instagram caption
+// Claude text post generation — LinkedIn full post + Instagram caption
+import Anthropic from '@anthropic-ai/sdk'
 import { cachedOr } from './kv-cache'
 import type { TextPost } from './types'
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
 const SYSTEM_PROMPT = `Tu es copywriter senior chez 0Flaw — plateforme SaaS de sensibilisation cybersécurité pour PME/ETI françaises.
 
@@ -25,7 +28,7 @@ const SYSTEM_PROMPT = `Tu es copywriter senior chez 0Flaw — plateforme SaaS de
 - 1-2 emojis (jamais plus)
 - Hashtags : 6-8 en minuscules, locaux (#cybersécurité #pme #france etc.)
 
-Réponds UNIQUEMENT avec du JSON valide. Aucun texte avant ou après.`
+Utilise l'outil 'generate_text_post' pour retourner tes réponses.`
 
 export async function generateTextPost(
   title: string,
@@ -38,52 +41,45 @@ export async function generateTextPost(
   return cachedOr(cacheKey, async () => {
     const userPrompt = `Rédige un post LinkedIn + caption Instagram sur :
 Titre : "${title}"
-Angle/contexte : "${topic}"
+Angle/contexte : "${topic}"`
 
-Format JSON attendu :
-{
-  "linkedin": "le post LinkedIn complet avec hook, corps structuré, CTA et hashtags",
-  "instagram": "la caption Instagram condensée avec emojis et hashtags"
-}`
-
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY!}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        max_tokens: 1200,
-        temperature: 0.7,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt },
-        ],
-      }),
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 1200,
+      system: SYSTEM_PROMPT,
+      tools: [
+        {
+          name: 'generate_text_post',
+          description: 'Génère un post LinkedIn et une caption Instagram',
+          input_schema: {
+            type: 'object' as const,
+            properties: {
+              linkedin: {
+                type: 'string',
+                description: 'Post LinkedIn complet avec hook, corps, CTA et hashtags'
+              },
+              instagram: {
+                type: 'string',
+                description: 'Caption Instagram condensée avec emojis et hashtags'
+              }
+            },
+            required: ['linkedin', 'instagram']
+          }
+        }
+      ],
+      tool_choice: { type: 'tool', name: 'generate_text_post' },
+      messages: [{ role: 'user', content: userPrompt }]
     })
 
-    const data = await res.json()
-
-    if (!res.ok) {
-      const msg = data?.error?.message ?? `HTTP ${res.status}`
-      throw new Error(`OpenAI API error (text-post): ${msg}`)
+    const toolBlock = response.content.find(b => b.type === 'tool_use')
+    if (!toolBlock || toolBlock.type !== 'tool_use') {
+      throw new Error('Claude: no tool_use block in text-post response')
     }
 
-    const raw: string = data.choices?.[0]?.message?.content ?? ''
-
-    let parsed: TextPost
-    try {
-      parsed = JSON.parse(raw)
-    } catch {
-      const match = raw.match(/\{[\s\S]*\}/)
-      if (!match) throw new Error(`Réponse GPT-4o non-JSON — reçu : ${raw.slice(0, 200)}`)
-      parsed = JSON.parse(match[0])
-    }
+    const parsed = toolBlock.input as TextPost
 
     if (!parsed.linkedin?.trim() || !parsed.instagram?.trim()) {
-      throw new Error('GPT-4o: champs linkedin ou instagram manquants dans la réponse')
+      throw new Error('Claude: champs linkedin ou instagram manquants')
     }
 
     return parsed
