@@ -1,5 +1,8 @@
-// OpenAI GPT-4o helper — génération de description de post
+// lib/claude.ts — Anthropic Claude description generation
+import Anthropic from '@anthropic-ai/sdk'
 import { cachedOr } from './kv-cache'
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
 export async function generatePostDescription(
   topic: string,
@@ -14,20 +17,7 @@ export async function generatePostDescription(
       v3: 'V3 maximale (5-6 lignes) : chiffre → cause → solution → CTA. La plus complète.'
     }
 
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY!}`
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        max_tokens: 600,
-        temperature: 0.7,
-        messages: [
-          {
-            role: 'system',
-            content: `Tu es un expert copywriter LinkedIn pour 0Flaw, une plateforme SaaS de sensibilisation cybersécurité pour PME/ETI françaises.
+    const systemPrompt = `Tu es un expert copywriter LinkedIn pour 0Flaw, une plateforme SaaS de sensibilisation cybersécurité pour PME/ETI françaises.
 
 Règles voix 0Flaw :
 - Direct, technique, sans bullshit, anti-fluff
@@ -40,20 +30,23 @@ Règles voix 0Flaw :
 - Finir par 4-5 hashtags : #Cybersécurité + hashtags spécifiques
 - Jamais d'URL dans le texte (pénalise la portée LinkedIn)
 - Répondre UNIQUEMENT avec la description, sans introduction ni explication`
-          },
-          {
-            role: 'user',
-            content: `Sujet du carrousel : "${topic}"\n\nRédige la description LinkedIn format ${variantInstructions[variant]}`
-          }
-        ]
-      })
+
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 600,
+      system: systemPrompt,
+      messages: [
+        {
+          role: 'user',
+          content: `Sujet du carrousel : "${topic}"\n\nRédige la description LinkedIn format ${variantInstructions[variant]}`
+        }
+      ]
     })
 
-    const data = await res.json()
-    if (!res.ok) {
-      const msg = data?.error?.message ?? `HTTP ${res.status}`
-      throw new Error(`OpenAI API error (description): ${msg}`)
+    const block = response.content.find(b => b.type === 'text')
+    if (!block || block.type !== 'text') {
+      throw new Error('Claude: no text block in response')
     }
-    return data.choices?.[0]?.message?.content || ''
+    return block.text
   })
 }
