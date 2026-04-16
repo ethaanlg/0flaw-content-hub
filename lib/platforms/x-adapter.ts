@@ -23,6 +23,7 @@ export const xAdapter: PlatformAdapter = {
           previousId = data.id
         }
 
+        if (!firstId) throw new Error('Thread published but first tweet ID was not captured')
         return { success: true, externalId: firstId }
       } else {
         const { data } = await client.v2.tweet({ text: content.text.slice(0, 280) })

@@ -35,7 +35,7 @@ export const threadsAdapter: PlatformAdapter = {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             media_type: 'CAROUSEL',
-            children: childIds.join(','),
+            children: childIds,
             text: content.text.slice(0, 500),
             access_token: accessToken,
           }),
@@ -91,7 +91,7 @@ export const threadsAdapter: PlatformAdapter = {
     if (!res.ok) throw new Error(`Threads analytics failed: ${body.error?.message ?? JSON.stringify(body)}`)
 
     const metrics: Record<string, number> = {}
-    for (const item of (body.data as Array<{ name: string; values: Array<{ value: number }> }>)) {
+    for (const item of (body.data ?? []) as Array<{ name: string; values: Array<{ value: number }> }>) {
       metrics[item.name] = item.values[0]?.value ?? 0
     }
 
