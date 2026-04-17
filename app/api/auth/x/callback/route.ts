@@ -99,7 +99,7 @@ export async function GET(req: NextRequest) {
         access_token: accessToken,
         refresh_token: refreshToken,
         expires_at: expiresAt,
-        scopes: 'tweet.read tweet.write users.read offline.access',
+        scopes: ['tweet.read', 'tweet.write', 'users.read', 'offline.access'],
         connected_at: new Date().toISOString(),
       },
       { onConflict: 'user_id,platform,account_id' }

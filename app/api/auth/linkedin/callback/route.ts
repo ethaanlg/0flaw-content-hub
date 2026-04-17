@@ -92,7 +92,7 @@ export async function GET(req: NextRequest) {
         access_token: accessToken,
         refresh_token: tokenData.refresh_token ?? null,
         expires_at: expiresAt,
-        scopes: 'openid profile email w_member_social',
+        scopes: ['openid', 'profile', 'email', 'w_member_social'],
         connected_at: new Date().toISOString(),
       },
       { onConflict: 'user_id,platform,account_id' }
