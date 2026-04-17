@@ -10,7 +10,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const { data: { users } } = await supabaseAdmin.auth.admin.listUsers()
+  const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 })
 
   const results: { userId: string; proposals?: number; error?: string }[] = []
 

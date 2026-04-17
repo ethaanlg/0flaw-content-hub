@@ -44,7 +44,14 @@ export async function runAgentWeeklyPlan(userId: string): Promise<{ proposals: n
       for (const block of toolUses) {
         if (block.type !== 'tool_use') continue
         const result = await executeAgentTool(block.name, block.input as Record<string, unknown>)
-        if (block.name === 'save_proposal') proposalsSaved++
+        if (block.name === 'save_proposal') {
+          try {
+            const parsed = JSON.parse(result) as Record<string, unknown>
+            if (parsed.saved === true) proposalsSaved++
+          } catch {
+            // result was not valid JSON — don't count
+          }
+        }
         toolResults.push({
           type: 'tool_result',
           tool_use_id: block.id,

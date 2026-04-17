@@ -42,3 +42,7 @@ create policy "Users see own memory"
 
 create index agent_proposals_user_status on agent_proposals(user_id, status);
 create index agent_memory_user_id on agent_memory(user_id);
+
+-- Note: IVFFlat index requires data to exist first; run this after initial data load
+-- create index agent_memory_embedding on agent_memory using ivfflat (embedding vector_cosine_ops) with (lists = 100);
+-- For now, use exact nearest-neighbor search (no index) — add index when table has >1000 rows

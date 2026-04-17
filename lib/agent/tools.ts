@@ -72,6 +72,7 @@ export async function executeAgentTool(
       .from('posts')
       .select('id, title, topic, content_type')
       .eq('user_id', userId)
+      .gte('created_at', since)
 
     if (!posts?.length) return JSON.stringify({ message: 'Pas de posts sur cette période', posts: 0 })
 
