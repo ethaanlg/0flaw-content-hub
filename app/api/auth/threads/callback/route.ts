@@ -99,7 +99,7 @@ export async function GET(req: NextRequest) {
         access_token: accessToken,
         refresh_token: longTokenData?.access_token ?? null,
         expires_at: expiresAt,
-        scopes: 'threads_basic,threads_content_publish,threads_manage_insights',
+        scopes: ['threads_basic', 'threads_content_publish', 'threads_manage_insights'],
         connected_at: new Date().toISOString(),
       },
       { onConflict: 'user_id,platform,account_id' }

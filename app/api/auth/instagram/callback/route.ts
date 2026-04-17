@@ -115,8 +115,7 @@ export async function GET(req: NextRequest) {
         access_token: accessToken,
         refresh_token: null,
         expires_at: expiresAt,
-        scopes:
-          'instagram_basic,instagram_content_publish,instagram_manage_insights,pages_show_list',
+        scopes: ['instagram_basic', 'instagram_content_publish', 'instagram_manage_insights', 'pages_show_list'],
         connected_at: new Date().toISOString(),
       },
       { onConflict: 'user_id,platform,account_id' }
