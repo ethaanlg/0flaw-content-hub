@@ -28,7 +28,7 @@ function resolveTagColor(color?: SlideTag['color']): string {
 
 const S = StyleSheet.create({
   page: {
-    width: 595, height: 595,
+    width: 540, height: 675,
     backgroundColor: C.bg,
     padding: 0,
     fontFamily: 'Helvetica',
@@ -200,7 +200,7 @@ function SlideNum({ idx, total }: { idx: number; total: number }) {
 
 function CoverSlide({ slide, idx, total }: { slide: Extract<Slide, { type: 'cover' }>; idx: number; total: number }) {
   return (
-    <Page size={[595, 595]} style={S.page}>
+    <Page size={[540, 675]} style={S.page}>
       <View style={S.topBar} />
       <View style={S.cornerAccent} />
       <View style={S.cornerBottomLeft} />
@@ -227,7 +227,7 @@ function CoverSlide({ slide, idx, total }: { slide: Extract<Slide, { type: 'cove
 
 function ProblemSlide({ slide, idx, total }: { slide: Extract<Slide, { type: 'problem' }>; idx: number; total: number }) {
   return (
-    <Page size={[595, 595]} style={S.page}>
+    <Page size={[540, 675]} style={S.page}>
       <TopBar color={slide.tag.color} />
       <View style={S.cornerAccent} />
       <View style={S.inner}>
@@ -254,7 +254,7 @@ function ProblemSlide({ slide, idx, total }: { slide: Extract<Slide, { type: 'pr
 function StatSlide({ slide, idx, total }: { slide: Extract<Slide, { type: 'stat' }>; idx: number; total: number }) {
   const accentColor = slide.tag.color === 'red' ? C.red : C.accent
   return (
-    <Page size={[595, 595]} style={S.page}>
+    <Page size={[540, 675]} style={S.page}>
       <TopBar color={slide.tag.color} />
       <View style={S.cornerAccent} />
       <View style={S.inner}>
@@ -270,7 +270,7 @@ function StatSlide({ slide, idx, total }: { slide: Extract<Slide, { type: 'stat'
 
 function InsightSlide({ slide, idx, total }: { slide: Extract<Slide, { type: 'insight' }>; idx: number; total: number }) {
   return (
-    <Page size={[595, 595]} style={S.page}>
+    <Page size={[540, 675]} style={S.page}>
       <TopBar color={slide.tag.color} />
       <View style={S.cornerAccent} />
       <View style={S.inner}>
@@ -292,7 +292,7 @@ function InsightSlide({ slide, idx, total }: { slide: Extract<Slide, { type: 'in
 
 function SystemSlide({ slide, idx, total }: { slide: Extract<Slide, { type: 'system' }>; idx: number; total: number }) {
   return (
-    <Page size={[595, 595]} style={S.page}>
+    <Page size={[540, 675]} style={S.page}>
       <TopBar color={slide.tag.color} />
       <View style={S.cornerAccent} />
       <View style={S.inner}>
@@ -318,7 +318,7 @@ function SystemSlide({ slide, idx, total }: { slide: Extract<Slide, { type: 'sys
 function ProofSlide({ slide, idx, total }: { slide: Extract<Slide, { type: 'proof' }>; idx: number; total: number }) {
   const statColor = slide.tag.color === 'green' ? C.green : C.accent
   return (
-    <Page size={[595, 595]} style={S.page}>
+    <Page size={[540, 675]} style={S.page}>
       <TopBar color={slide.tag.color} />
       <View style={S.cornerAccent} />
       <View style={S.inner}>
@@ -342,7 +342,7 @@ function ProofSlide({ slide, idx, total }: { slide: Extract<Slide, { type: 'proo
 
 function CTASlide({ slide, idx, total }: { slide: Extract<Slide, { type: 'cta' }>; idx: number; total: number }) {
   return (
-    <Page size={[595, 595]} style={S.page}>
+    <Page size={[540, 675]} style={S.page}>
       <TopBar color={slide.tag.color} />
       <View style={S.cornerAccent} />
       <View style={S.cornerBottomLeft} />

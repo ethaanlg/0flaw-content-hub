@@ -84,11 +84,37 @@ export async function GET(req: NextRequest) {
         continue
       }
 
-      const tokens: OAuthTokens = {
+      let tokens: OAuthTokens = {
         accessToken: connection.access_token,
         refreshToken: connection.refresh_token ?? undefined,
         expiresAt: connection.expires_at ? new Date(connection.expires_at) : undefined,
         scopes: connection.scopes ?? undefined,
+      }
+
+      // Auto-refresh token if it expires within 10 minutes
+      const REFRESH_THRESHOLD_MS = 10 * 60 * 1000
+      const isExpiringSoon =
+        tokens.expiresAt &&
+        tokens.expiresAt.getTime() - Date.now() < REFRESH_THRESHOLD_MS
+
+      if (isExpiringSoon && tokens.refreshToken) {
+        try {
+          const refreshedTokens = await getAdapter(platform).refreshToken(tokens)
+          tokens = refreshedTokens
+          await supabaseAdmin
+            .from('platform_connections')
+            .update({
+              access_token: refreshedTokens.accessToken,
+              refresh_token: refreshedTokens.refreshToken ?? connection.refresh_token,
+              expires_at: refreshedTokens.expiresAt?.toISOString() ?? null,
+            })
+            .eq('id', connection.id)
+          console.log(`[publish-scheduled] refreshed token for ${platform} / user ${post.user_id}`)
+        } catch (refreshErr: unknown) {
+          const msg = refreshErr instanceof Error ? refreshErr.message : String(refreshErr)
+          console.error(`[publish-scheduled] token refresh failed for ${platform}:`, msg)
+          // Continue with existing token — may still work if not fully expired
+        }
       }
 
       try {

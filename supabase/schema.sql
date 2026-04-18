@@ -15,11 +15,14 @@ create table social_accounts (
 -- Table des posts
 create table posts (
   id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade not null,
   title text not null,
   topic text,
   description text,
-  status text not null default 'draft' check (status in ('draft', 'scheduled', 'published', 'failed')),
+  status text not null default 'draft' check (status in ('draft', 'scheduled', 'publishing', 'published', 'failed')),
   platforms text[] not null default '{}',
+  content_type text not null default 'carousel',
+  payload jsonb,
   scheduled_at timestamptz,
   published_at timestamptz,
   linkedin_post_id text,
@@ -49,8 +52,16 @@ create table post_stats (
 -- Index pour les requêtes fréquentes
 create index idx_posts_status on posts(status);
 create index idx_posts_scheduled_at on posts(scheduled_at);
+create index idx_posts_user_id on posts(user_id);
 create index idx_post_stats_post_id on post_stats(post_id);
 create index idx_post_stats_collected_at on post_stats(collected_at);
+
+-- RLS posts
+alter table posts enable row level security;
+create policy "posts_select_own" on posts for select using (auth.uid() = user_id);
+create policy "posts_insert_own" on posts for insert with check (auth.uid() = user_id);
+create policy "posts_update_own" on posts for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "posts_delete_own" on posts for delete using (auth.uid() = user_id);
 
 -- Vue : meilleur créneau de publication par jour/heure
 create or replace view best_posting_times as
