@@ -1,8 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { unstable_cache } from 'next/cache'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { PostsUpdateBodySchema, PostCreateSchema, parseBody } from '@/lib/zod-schemas'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+
+// Cache par (userId, status) pour les requêtes simples sans curseur ni plage de dates
+// scheduled: 30s (change fréquemment), published: 60s
+const getCachedPosts = unstable_cache(
+  async (userId: string, status: string) => {
+    const { data, error } = await supabaseAdmin
+      .from('posts')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', status)
+      .order('scheduled_at', { ascending: true })
+      .order('id', { ascending: true })
+      .limit(50)
+
+    if (error) throw new Error(error.message)
+    return { posts: data ?? [], nextCursor: null, hasMore: false }
+  },
+  ['posts'],
+  { revalidate: 30, tags: ['posts'] }
+)
 
 function createUserClient() {
   const cookieStore = cookies()
@@ -23,6 +44,15 @@ function createUserClient() {
 
 // GET /api/posts?from=...&to=...&status=...&platform=...&limit=50&cursor=<uuid>
 export async function GET(req: NextRequest) {
+  // Auth guard — isoler les posts par utilisateur
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: { getAll: () => req.cookies.getAll(), setAll: () => {} } }
+  )
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
+
   try {
     const { searchParams } = new URL(req.url)
     const from = searchParams.get('from')
@@ -32,19 +62,27 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') ?? '50', 10), 200)
     const cursor = searchParams.get('cursor')
 
+    // Cache uniquement pour les requêtes simples (status seul, pas de curseur/dates/plateforme)
+    const isSimpleQuery = status && !from && !to && !platform && !cursor
+    if (isSimpleQuery) {
+      const cached = await getCachedPosts(user.id, status)
+      return NextResponse.json(cached)
+    }
+
+    // Requête complète sans cache (pagination, filtres avancés)
     let query = supabaseAdmin
       .from('posts')
       .select('*')
+      .eq('user_id', user.id)
       .order('scheduled_at', { ascending: true })
       .order('id', { ascending: true })
-      .limit(limit + 1) // +1 pour détecter s'il y a une page suivante
+      .limit(limit + 1)
 
     if (from) query = query.gte('scheduled_at', from)
     if (to) query = query.lte('scheduled_at', to)
     if (status) query = query.eq('status', status)
     if (platform) query = query.contains('platforms', [platform])
 
-    // Cursor-based pagination : reprendre après le dernier item reçu
     if (cursor) {
       const { data: cursorPost } = await supabaseAdmin
         .from('posts')
