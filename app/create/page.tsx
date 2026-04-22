@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
 import {
   format,
   startOfMonth,
@@ -1111,9 +1112,9 @@ function Step4({
           ID: {savedId}
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <a href="/calendar" className="btn btn-ghost" style={{ textDecoration: 'none' }}>
+          <Link href="/calendar" className="btn btn-ghost" style={{ textDecoration: 'none' }}>
             Voir dans le calendrier →
-          </a>
+          </Link>
           <button className="btn btn-primary" onClick={onReset}>
             Créer un autre post
           </button>

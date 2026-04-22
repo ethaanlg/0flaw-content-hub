@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, isWithinInterval, parseISO, differenceInSeconds, addDays } from 'date-fns'
 import { fr } from 'date-fns/locale'
@@ -417,15 +418,15 @@ export default function DashboardPage() {
                 </>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <a href="/create" className="btn btn-primary" style={{ justifyContent: 'center' }}>
+                  <Link href="/create" className="btn btn-primary" style={{ justifyContent: 'center' }}>
                     ⚡ Nouveau carrousel
-                  </a>
-                  <a href="/calendar" className="btn btn-ghost" style={{ justifyContent: 'center' }}>
+                  </Link>
+                  <Link href="/calendar" className="btn btn-ghost" style={{ justifyContent: 'center' }}>
                     📅 Voir le calendrier
-                  </a>
-                  <a href="/analytics" className="btn btn-ghost" style={{ justifyContent: 'center' }}>
+                  </Link>
+                  <Link href="/analytics" className="btn btn-ghost" style={{ justifyContent: 'center' }}>
                     📊 Voir les stats
-                  </a>
+                  </Link>
                 </div>
               )}
             </div>
