@@ -1,10 +1,16 @@
 'use client'
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { supabase } from '@/lib/supabase'
 import type { Post, PostStats } from '@/lib/types'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from 'recharts'
-import { format, subDays } from 'date-fns'
+import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
+
+// Lazy-load recharts — ~180kb, DOM-only
+const AnalyticsLineChart = dynamic(() => import('@/components/AnalyticsLineChart'), {
+  ssr: false,
+  loading: () => <div className="skeleton" style={{ height: 220, borderRadius: 10 }} />,
+})
 
 type PostWithStats = Post & { stats: PostStats[] }
 
@@ -25,19 +31,6 @@ function StatCard({ label, value, sub, color }: { label: string, value: string, 
   )
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null
-  return (
-    <div style={{ background: '#1a1f36', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10, padding: '10px 14px' }}>
-      <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 6 }}>{label}</p>
-      {payload.map((p: any) => (
-        <p key={p.dataKey} style={{ fontSize: 13, color: p.color, fontWeight: 700 }}>
-          {p.name}: {p.value}
-        </p>
-      ))}
-    </div>
-  )
-}
 
 export default function AnalyticsPage() {
   const [posts, setPosts] = useState<PostWithStats[]>([])
@@ -149,17 +142,7 @@ export default function AnalyticsPage() {
           <div style={{ fontSize: 11, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.4)', marginBottom: 20 }}>
             Évolution — 12 derniers posts
           </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="name" tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} tickLine={false} axisLine={false} />
-              <YAxis tick={{ fill: 'rgba(255,255,255,0.3)', fontSize: 10 }} tickLine={false} axisLine={false} />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend wrapperStyle={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }} />
-              <Line type="monotone" dataKey="Impressions" stroke="#4f6fff" strokeWidth={2} dot={{ fill: '#4f6fff', r: 3 }} />
-              <Line type="monotone" dataKey="Reach" stroke="#7a94ff" strokeWidth={2} dot={{ fill: '#7a94ff', r: 3 }} />
-            </LineChart>
-          </ResponsiveContainer>
+          <AnalyticsLineChart data={chartData} />
         </div>
       )}
 
